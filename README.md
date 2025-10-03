@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BoLui - Expense Tracker
+
+A modern expense tracking application built with Next.js 14, TypeScript, Material-UI, and Supabase.
+
+## Features
+
+- 🔐 **User Authentication** - Secure login and signup with Supabase Auth
+- 💰 **Expense Tracking** - Add, view, and delete expenses with ease
+- 📊 **Dashboard** - Beautiful summary of your expenses
+- 🎨 **Modern UI** - Built with Material-UI and Tailwind CSS
+- 🔄 **Real-time Updates** - MobX state management for reactive UI
+- 📱 **Responsive Design** - Works perfectly on all devices
+
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + Material-UI (MUI)
+- **State Management:** MobX
+- **Backend:** Supabase (PostgreSQL + Auth)
+- **Code Quality:** Prettier + ESLint
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ installed
+- Supabase account and project set up
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Set up environment variables:
+   Ensure your `.env.local` file has the correct Supabase credentials:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+4. Set up the database:
+   Run the SQL script in `supabase/schema.sql` in your Supabase SQL editor to create the necessary tables and policies.
+
+5. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+BoLui/
+├── app/                    # Next.js App Router pages
+│   ├── dashboard/         # Dashboard page
+│   ├── login/            # Login page
+│   ├── signup/           # Signup page
+│   └── layout.tsx        # Root layout
+├── components/            # React components
+│   ├── AddExpenseDialog.tsx
+│   ├── ExpensesList.tsx
+│   └── Providers.tsx
+├── lib/                   # Utilities and configurations
+│   ├── supabase/         # Supabase client setup
+│   └── theme.ts          # MUI theme configuration
+├── stores/               # MobX stores
+│   ├── UserStore.ts
+│   ├── ExpensesStore.ts
+│   ├── CategoriesStore.ts
+│   └── index.ts
+├── supabase/             # Database schema
+│   └── schema.sql
+└── middleware.ts         # Auth middleware
+```
 
-## Learn More
+## Available Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Expenses Table
 
-## Deploy on Vercel
+| Column      | Type      | Description               |
+| ----------- | --------- | ------------------------- |
+| id          | UUID      | Primary key               |
+| user_id     | UUID      | Foreign key to auth.users |
+| amount      | DECIMAL   | Expense amount            |
+| description | TEXT      | Expense description       |
+| category    | TEXT      | Expense category          |
+| date        | DATE      | Date of expense           |
+| created_at  | TIMESTAMP | Record creation timestamp |
+| updated_at  | TIMESTAMP | Record update timestamp   |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Using React Bits Components
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+React Bits is a copy-paste component library. To use components:
+
+1. Visit [https://reactbits.dev/](https://reactbits.dev/)
+2. Browse and select a component
+3. Copy the code from the Code tab
+4. Install any required dependencies
+5. Paste into your components folder
+6. Customize as needed
+
+## Features Roadmap
+
+- [ ] Edit expenses
+- [ ] Expense categories management
+- [ ] Monthly/yearly reports
+- [ ] Export data (CSV, PDF)
+- [ ] Budget tracking
+- [ ] Recurring expenses
+- [ ] Multi-currency support
+- [ ] Charts and analytics
+- [ ] Dark mode
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
