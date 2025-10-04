@@ -19,37 +19,87 @@ import {
   Fab,
   CircularProgress,
 } from '@mui/material';
-import { Add, AccountCircle, Logout, TrendingUp, TrendingDown, Receipt } from '@mui/icons-material';
+import {
+  MdAdd,
+  MdAccountCircle,
+  MdLogout,
+  MdTrendingUp,
+  MdTrendingDown,
+  MdReceipt,
+  MdSettings,
+  MdDarkMode,
+  MdLightMode,
+} from 'react-icons/md';
 import { createClient } from '@/lib/supabase/client';
 import { useStores } from '@/stores';
+import { useTheme as useCustomTheme } from '@/contexts/theme-context';
 import AddExpenseDialog from '@/components/add-expense-dialog';
+import EditExpenseDialog from '@/components/edit-expense-dialog';
 import ExpensesList from '@/components/expenses-list';
+import BudgetSetupDialog from '@/components/budget-setup-dialog';
+import BudgetOverview from '@/components/budget-overview';
+import MonthSelector from '@/components/month-selector';
+import SavingsRateCard from '@/components/savings-rate-card';
+import ExpenseFilters, { FilterState } from '@/components/expense-filters';
 import { format } from 'date-fns';
 
 const DashboardPage = observer(() => {
   const router = useRouter();
   const supabase = createClient();
-  const { userStore, expensesStore } = useStores();
+  const { userStore, expensesStore, budgetStore } = useStores();
+  const { isDarkMode, toggleTheme } = useCustomTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openAddExpense, setOpenAddExpense] = useState(false);
+  const [openEditExpense, setOpenEditExpense] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [openBudgetSetup, setOpenBudgetSetup] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: '',
+    sortBy: 'date-desc',
+  });
 
   useEffect(() => {
-    const fetchExpenses = async (userId: string) => {
+    const fetchExpenses = async () => {
       expensesStore.setLoading(true);
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
-
-      if (error) {
+      try {
+        const response = await fetch('/api/expenses');
+        if (response.ok) {
+          const data = await response.json();
+          expensesStore.setExpenses(data || []);
+        } else {
+          expensesStore.setError('Failed to fetch expenses');
+        }
+      } catch (error) {
         console.error('Error fetching expenses:', error);
-        expensesStore.setError(error.message);
-      } else {
-        expensesStore.setExpenses(data || []);
+        expensesStore.setError('Failed to fetch expenses');
       }
       expensesStore.setLoading(false);
+    };
+
+    const fetchBudget = async () => {
+      budgetStore.setLoading(true);
+      budgetStore.setError(null); // Clear any previous errors
+      try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const response = await fetch(`/api/budget?month=${month}&year=${year}`);
+        if (response.ok) {
+          const data = await response.json();
+          budgetStore.setBudget(data);
+        } else if (response.status === 404) {
+          // Silently handle missing budget - this is expected
+          budgetStore.setBudget(null);
+        } else {
+          console.error('Unexpected error fetching budget:', response.status);
+          budgetStore.setError('Failed to fetch budget');
+        }
+      } catch (error) {
+        console.error('Error fetching budget:', error);
+        budgetStore.setError('Failed to fetch budget');
+      }
+      budgetStore.setLoading(false);
     };
 
     const checkUser = async () => {
@@ -61,7 +111,7 @@ const DashboardPage = observer(() => {
         router.push('/login');
       } else {
         userStore.setUser(user);
-        await fetchExpenses(user.id);
+        await Promise.all([fetchExpenses(), fetchBudget()]);
       }
       setLoading(false);
     };
@@ -69,6 +119,77 @@ const DashboardPage = observer(() => {
     checkUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleMonthChange = async (date: Date) => {
+    expensesStore.setSelectedMonth(date);
+
+    // Fetch budget for selected month
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+
+    budgetStore.setLoading(true);
+    budgetStore.setError(null); // Clear any previous errors
+    try {
+      const response = await fetch(`/api/budget?month=${month}&year=${year}`);
+      if (response.ok) {
+        const data = await response.json();
+        budgetStore.setBudget(data);
+      } else if (response.status === 404) {
+        // Silently handle missing budget - this is expected behavior
+        budgetStore.setBudget(null);
+      } else {
+        // Only log non-404 errors
+        console.error('Unexpected error fetching budget:', response.status);
+        budgetStore.setError('Failed to fetch budget');
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+      budgetStore.setError('Failed to fetch budget');
+    }
+    budgetStore.setLoading(false);
+  };
+
+  const handleEditExpense = (expense: any) => {
+    setSelectedExpense(expense);
+    setOpenEditExpense(true);
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+  };
+
+  const filteredExpenses = expensesStore.filteredExpenses
+    .filter((expense) => {
+      // Search query - searches across description, category, and type (recurring/one-time)
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const description = expense.description.toLowerCase();
+        const category = expense.category.toLowerCase();
+        const type = expense.is_recurring ? 'recurring' : 'one-time';
+
+        return description.includes(query) || category.includes(query) || type.includes(query);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Sorting logic
+      switch (filters.sortBy) {
+        case 'date-desc':
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'date-asc':
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case 'amount-desc':
+          return b.amount - a.amount;
+        case 'amount-asc':
+          return a.amount - b.amount;
+        case 'description-asc':
+          return a.description.localeCompare(b.description);
+        case 'description-desc':
+          return b.description.localeCompare(a.description);
+        default:
+          return 0;
+      }
+    });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -104,7 +225,7 @@ const DashboardPage = observer(() => {
       <AppBar
         position="sticky"
         elevation={0}
-        sx={{ bgcolor: 'white', borderBottom: 1, borderColor: 'divider' }}
+        sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}
       >
         <Toolbar>
           <Typography
@@ -114,9 +235,12 @@ const DashboardPage = observer(() => {
           >
             BoLui
           </Typography>
+          <IconButton onClick={toggleTheme} size="large" sx={{ mr: 1 }}>
+            {isDarkMode ? <MdLightMode size={24} /> : <MdDarkMode size={24} />}
+          </IconButton>
           <IconButton onClick={handleMenuOpen} size="large">
             <Avatar sx={{ bgcolor: 'primary.main' }}>
-              <AccountCircle />
+              <MdAccountCircle size={24} />
             </Avatar>
           </IconButton>
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
@@ -125,100 +249,135 @@ const DashboardPage = observer(() => {
                 {userStore.userEmail}
               </Typography>
             </MenuItem>
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                setOpenBudgetSetup(true);
+              }}
+            >
+              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                <MdSettings size={18} />
+              </Box>
+              Budget Settings
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
-              <Logout sx={{ mr: 1 }} fontSize="small" />
+              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                <MdLogout size={18} />
+              </Box>
               Logout
             </MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Dashboard
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
-            gap: 3,
-            mb: 4,
-          }}
-        >
-          <Card
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, sm: 3 } }}>
+        <Box sx={{ mb: 3 }}>
+          <Box
             sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'stretch', md: 'flex-start' },
+              gap: 2,
+              mb: 2,
             }}
           >
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Receipt sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Expenses</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                ${expensesStore.totalExpenses.toFixed(2)}
+            <Box>
+              <Typography
+                variant="h4"
+                fontWeight={700}
+                gutterBottom
+                sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
+              >
+                Dashboard
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
-                {expensesStore.expenses.length} transactions
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
+              >
+                {format(new Date(), 'EEEE, MMMM d, yyyy')}
               </Typography>
-            </CardContent>
-          </Card>
+            </Box>
 
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingUp sx={{ mr: 1, color: 'success.main' }} />
-                <Typography variant="h6">This Month</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                $0.00
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Coming soon
-              </Typography>
-            </CardContent>
-          </Card>
+            {/* Month Selector - Top Right */}
+            <Box sx={{ width: { xs: '100%', md: 300 } }}>
+              <MonthSelector
+                selectedDate={expensesStore.selectedMonth}
+                onDateChange={handleMonthChange}
+              />
+            </Box>
+          </Box>
 
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingDown sx={{ mr: 1, color: 'error.main' }} />
-                <Typography variant="h6">Categories</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                {Object.keys(expensesStore.expensesByCategory).length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Active categories
-              </Typography>
-            </CardContent>
-          </Card>
+          {!budgetStore.budget && (
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<MdSettings />}
+                onClick={() => setOpenBudgetSetup(true)}
+                fullWidth
+              >
+                Set Up Budget
+              </Button>
+            </Box>
+          )}
         </Box>
 
+        {budgetStore.budget && (
+          <Box sx={{ mb: 4 }}>
+            <BudgetOverview />
+          </Box>
+        )}
+
         <Card>
-          <CardContent>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
             >
-              <Typography variant="h5" fontWeight={600}>
-                Recent Expenses
-              </Typography>
+              <Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Expenses
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {format(expensesStore.selectedMonth, 'MMMM yyyy')}
+                </Typography>
+              </Box>
               <Button
                 variant="contained"
-                startIcon={<Add />}
+                startIcon={<MdAdd />}
                 onClick={() => setOpenAddExpense(true)}
+                size="small"
+                sx={{ display: { xs: 'none', sm: 'flex' } }}
               >
                 Add Expense
               </Button>
             </Box>
-            <ExpensesList />
+
+            {/* Search and Filters */}
+            <ExpenseFilters onFilterChange={handleFilterChange} />
+
+            {/* Summary for selected month */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: 1.5,
+                mb: 2,
+                bgcolor: 'primary.main',
+                color: 'white',
+                borderRadius: 1.5,
+              }}
+            >
+              <Typography variant="body2" fontWeight={600}>
+                Total Expenses ({filteredExpenses.length})
+              </Typography>
+              <Typography variant="h6" fontWeight={700}>
+                ${filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+              </Typography>
+            </Box>
+
+            <ExpensesList onEdit={handleEditExpense} expenses={filteredExpenses} />
           </CardContent>
         </Card>
       </Container>
@@ -234,10 +393,19 @@ const DashboardPage = observer(() => {
         }}
         onClick={() => setOpenAddExpense(true)}
       >
-        <Add />
+        <MdAdd size={24} />
       </Fab>
 
       <AddExpenseDialog open={openAddExpense} onClose={() => setOpenAddExpense(false)} />
+      <EditExpenseDialog
+        open={openEditExpense}
+        onClose={() => {
+          setOpenEditExpense(false);
+          setSelectedExpense(null);
+        }}
+        expense={selectedExpense}
+      />
+      <BudgetSetupDialog open={openBudgetSetup} onClose={() => setOpenBudgetSetup(false)} />
     </Box>
   );
 });

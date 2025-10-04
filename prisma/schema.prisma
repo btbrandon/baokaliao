@@ -1,0 +1,51 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+}
+
+model Expense {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  amount       Decimal  @db.Decimal(10, 2)
+  description  String
+  category     String
+  date         DateTime @default(now()) @db.Date
+  notes        String?  @db.Text
+  receiptUrl   String?  @map("receipt_url") @db.Text
+  isRecurring  Boolean  @default(false) @map("is_recurring")
+  recurringDay Int?     @map("recurring_day") @db.Integer
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId], map: "idx_expenses_user_id")
+  @@index([date(sort: Desc)], map: "idx_expenses_date")
+  @@index([userId, isRecurring], map: "idx_expenses_recurring")
+  @@map("expenses")
+}
+
+model Budget {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  monthlyIncome         Decimal  @default(0) @map("monthly_income") @db.Decimal(10, 2)
+  expensesPercentage    Decimal  @default(50.00) @map("expenses_percentage") @db.Decimal(5, 2)
+  investmentsPercentage Decimal  @default(20.00) @map("investments_percentage") @db.Decimal(5, 2)
+  savingsPercentage     Decimal  @default(20.00) @map("savings_percentage") @db.Decimal(5, 2)
+  otherPercentage       Decimal  @default(10.00) @map("other_percentage") @db.Decimal(5, 2)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  isRecurring           Boolean  @default(false) @map("is_recurring")
+  month                 Int
+  year                  Int
+
+  @@unique([userId, month, year], map: "unique_user_month_year")
+  @@index([userId], map: "idx_budgets_user_id")
+  @@index([userId, year, month], map: "idx_budgets_user_date")
+  @@map("budgets")
+}

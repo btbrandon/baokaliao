@@ -12,8 +12,13 @@ import {
   MenuItem,
   Box,
   Alert,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
+  Typography,
+  Collapse,
 } from '@mui/material';
-import { createClient } from '@/lib/supabase/client';
+import { MdUpload, MdClose, MdImage, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { useStores } from '@/stores';
 
 interface AddExpenseDialogProps {
@@ -22,14 +27,41 @@ interface AddExpenseDialogProps {
 }
 
 const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => {
-  const supabase = createClient();
-  const { userStore, expensesStore, categoriesStore } = useStores();
+  const { expensesStore, categoriesStore } = useStores();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringDay, setRecurringDay] = useState('1');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        setError('File size must be less than 5MB');
+        return;
+      }
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,26 +81,51 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
     setLoading(true);
 
     try {
-      const { data, error: insertError } = await supabase
-        .from('expenses')
-        .insert([
-          {
-            user_id: userStore.user?.id,
-            amount: amountNum,
-            description,
-            category,
-            date,
-          },
-        ])
-        .select()
-        .single();
+      const expenseDate = date || new Date().toISOString().split('T')[0];
 
-      if (insertError) {
-        setError(insertError.message);
-      } else if (data) {
-        expensesStore.addExpense(data);
-        handleClose();
+      // Upload receipt if provided
+      let receiptUrl = null;
+      if (receiptFile) {
+        const formData = new FormData();
+        formData.append('file', receiptFile);
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          receiptUrl = uploadData.url;
+        }
       }
+
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          description,
+          category,
+          date: expenseDate,
+          notes: notes || null,
+          isRecurring,
+          recurringDay: isRecurring ? parseInt(recurringDay) : null,
+          receiptUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || 'Failed to add expense');
+        return;
+      }
+
+      const data = await response.json();
+      expensesStore.addExpense(data);
+      handleClose();
     } catch {
       setError('An unexpected error occurred');
     } finally {
@@ -81,6 +138,12 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
     setDescription('');
     setCategory('');
     setDate(new Date().toISOString().split('T')[0]);
+    setNotes('');
+    setIsRecurring(false);
+    setRecurringDay('1');
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setShowAdvanced(false);
     setError('');
     onClose();
   };
@@ -97,6 +160,14 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
           )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+              fullWidth
+              placeholder="What did you spend on?"
+            />
+            <TextField
               label="Amount"
               type="number"
               value={amount}
@@ -105,14 +176,6 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
               fullWidth
               inputProps={{ step: '0.01', min: '0' }}
               placeholder="0.00"
-            />
-            <TextField
-              label="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              fullWidth
-              placeholder="What did you spend on?"
             />
             <TextField
               select
@@ -132,16 +195,120 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
               ))}
             </TextField>
             <TextField
-              label="Date"
+              label="Date (Optional)"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              required
               fullWidth
               InputLabelProps={{
                 shrink: true,
               }}
+              helperText="Leave empty to use today's date"
             />
+
+            {/* Advanced Options Toggle */}
+            <Button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              startIcon={showAdvanced ? <MdExpandLess /> : <MdExpandMore />}
+              sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+            >
+              Advanced Options
+            </Button>
+
+            <Collapse in={showAdvanced}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Recurring Expense */}
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={isRecurring}
+                        onChange={(e) => setIsRecurring(e.target.checked)}
+                      />
+                    }
+                    label="Recurring Expense"
+                  />
+                  {isRecurring && (
+                    <TextField
+                      select
+                      label="Repeat on day of month"
+                      value={recurringDay}
+                      onChange={(e) => setRecurringDay(e.target.value)}
+                      fullWidth
+                      size="small"
+                      sx={{ mt: 1 }}
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <MenuItem key={day} value={day.toString()}>
+                          Day {day}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                </Box>
+
+                {/* Notes */}
+                <TextField
+                  label="Notes (Optional)"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder="Add any additional details..."
+                />
+
+                {/* Receipt Upload */}
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Receipt (Optional)
+                  </Typography>
+                  {!receiptPreview ? (
+                    <Button variant="outlined" component="label" startIcon={<MdUpload />} fullWidth>
+                      Upload Receipt
+                      <input type="file" hidden accept="image/*" onChange={handleFileChange} />
+                    </Button>
+                  ) : (
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        p: 1,
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={removeReceipt}
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          bgcolor: 'background.paper',
+                        }}
+                      >
+                        <MdClose />
+                      </IconButton>
+                      <Box
+                        component="img"
+                        src={receiptPreview}
+                        alt="Receipt preview"
+                        sx={{
+                          width: '100%',
+                          maxHeight: 200,
+                          objectFit: 'contain',
+                          borderRadius: 1,
+                        }}
+                      />
+                    </Box>
+                  )}
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Max file size: 5MB
+                  </Typography>
+                </Box>
+              </Box>
+            </Collapse>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>

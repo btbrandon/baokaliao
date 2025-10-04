@@ -1,34 +1,74 @@
 'use client';
 
 import { observer } from 'mobx-react-lite';
+import { useState, MouseEvent } from 'react';
 import {
   List,
   ListItem,
   ListItemText,
-  ListItemAvatar,
-  Avatar,
   Typography,
   Box,
-  IconButton,
-  Chip,
   CircularProgress,
+  Menu,
+  MenuItem,
 } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { MdDelete, MdEdit, MdMoreVert } from 'react-icons/md';
 import { useStores } from '@/stores';
 import { format } from 'date-fns';
-import { createClient } from '@/lib/supabase/client';
+import { Expense } from '@/stores/expense/store';
 
-const ExpensesList = observer(() => {
+interface ExpensesListProps {
+  onEdit?: (expense: any) => void;
+  expenses?: Expense[];
+}
+
+const ExpensesList = observer(({ onEdit, expenses }: ExpensesListProps = {}) => {
   const { expensesStore, categoriesStore } = useStores();
-  const supabase = createClient();
+  const displayExpenses = expenses || expensesStore.filteredExpenses;
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    expense: any;
+  } | null>(null);
+
+  const handleContextMenu = (event: MouseEvent, expense: any) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+            expense,
+          }
+        : null
+    );
+  };
+
+  const handleClose = () => {
+    setContextMenu(null);
+  };
+
+  const handleEdit = () => {
+    if (contextMenu && onEdit) {
+      onEdit(contextMenu.expense);
+    }
+    handleClose();
+  };
 
   const handleDelete = async (id: string) => {
+    handleClose();
     if (!confirm('Are you sure you want to delete this expense?')) return;
 
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    try {
+      const response = await fetch(`/api/expenses/${id}`, {
+        method: 'DELETE',
+      });
 
-    if (!error) {
-      expensesStore.deleteExpense(id);
+      if (response.ok) {
+        expensesStore.deleteExpense(id);
+      }
+    } catch (error) {
+      console.error('Failed to delete expense:', error);
     }
   };
 
@@ -40,86 +80,167 @@ const ExpensesList = observer(() => {
     );
   }
 
-  if (expensesStore.expenses.length === 0) {
+  if (displayExpenses.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
-          No expenses yet
+          No expenses found
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Click the &quot;Add Expense&quot; button to get started
+          Click the &quot;Add Expense&quot; button to add expenses
         </Typography>
       </Box>
     );
   }
 
   return (
-    <List sx={{ width: '100%' }}>
-      {expensesStore.expenses.map((expense) => {
+    <List sx={{ width: '100%', p: 0 }}>
+      {displayExpenses.map((expense) => {
         const category = categoriesStore.getCategoryByName(expense.category);
         return (
           <ListItem
             key={expense.id}
+            onContextMenu={(e) => handleContextMenu(e, expense)}
             sx={{
-              border: 1,
+              px: 2,
+              py: 1,
+              mb: 0.5,
+              border: '1px solid',
               borderColor: 'divider',
-              borderRadius: 2,
-              mb: 1,
+              borderRadius: 1.5,
+              transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+              cursor: 'pointer',
               '&:hover': {
                 bgcolor: 'action.hover',
+                borderColor: 'primary.main',
+                transform: 'translateX(4px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               },
             }}
-            secondaryAction={
-              <Box>
-                <IconButton edge="end" onClick={() => handleDelete(expense.id)}>
-                  <Delete />
-                </IconButton>
-              </Box>
-            }
           >
-            <ListItemAvatar>
-              <Avatar sx={{ bgcolor: category?.color || 'primary.main' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+              {/* Category Icon */}
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  bgcolor: category?.color || 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.2rem',
+                  flexShrink: 0,
+                }}
+              >
                 {category?.icon || '💰'}
-              </Avatar>
-            </ListItemAvatar>
-            <ListItemText
-              primary={
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 2,
-                  }}
-                >
-                  <Typography variant="subtitle1" fontWeight={600}>
+              </Box>
+
+              {/* Content */}
+              <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    sx={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {expense.description}
                   </Typography>
-                  <Typography variant="h6" fontWeight={700} color="primary">
-                    ${expense.amount.toFixed(2)}
-                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, mt: 0.25, alignItems: 'center' }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: category?.color || 'primary.main',
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                      }}
+                    >
+                      {expense.category}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontSize: '0.7rem' }}
+                    >
+                      • {format(new Date(expense.date), 'MMM d')}
+                    </Typography>
+                  </Box>
                 </Box>
-              }
-              secondary={
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
-                  <Chip
-                    label={expense.category}
-                    size="small"
-                    sx={{
-                      bgcolor: category?.color || 'primary.main',
-                      color: 'white',
-                      fontWeight: 600,
-                    }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    {format(new Date(expense.date), 'MMM d, yyyy')}
-                  </Typography>
-                </Box>
-              }
-            />
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{
+                    flexShrink: 0,
+                    minWidth: 'fit-content',
+                    color: 'text.primary',
+                  }}
+                >
+                  ${expense.amount.toFixed(2)}
+                </Typography>
+              </Box>
+            </Box>
           </ListItem>
         );
       })}
+      <Menu
+        open={contextMenu !== null}
+        onClose={handleClose}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+        slotProps={{
+          paper: {
+            sx: {
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              borderRadius: 2,
+              minWidth: 150,
+            },
+          },
+        }}
+      >
+        {onEdit && (
+          <MenuItem
+            onClick={handleEdit}
+            sx={{
+              gap: 1.5,
+              py: 1,
+              px: 2,
+              '&:hover': {
+                bgcolor: 'primary.light',
+                color: 'primary.contrastText',
+              },
+            }}
+          >
+            <MdEdit size={18} />
+            <Typography variant="body2">Edit</Typography>
+          </MenuItem>
+        )}
+        <MenuItem
+          onClick={() => {
+            if (contextMenu) {
+              handleDelete(contextMenu.expense.id);
+            }
+          }}
+          sx={{
+            gap: 1.5,
+            py: 1,
+            px: 2,
+            color: 'error.main',
+            '&:hover': {
+              bgcolor: 'error.light',
+              color: 'error.contrastText',
+            },
+          }}
+        >
+          <MdDelete size={18} />
+          <Typography variant="body2">Delete</Typography>
+        </MenuItem>
+      </Menu>
     </List>
   );
 });
