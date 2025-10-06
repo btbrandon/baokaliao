@@ -17,12 +17,12 @@ model Expense {
   description  String
   category     String
   date         DateTime @default(now()) @db.Date
-  notes        String?  @db.Text
-  receiptUrl   String?  @map("receipt_url") @db.Text
-  isRecurring  Boolean  @default(false) @map("is_recurring")
-  recurringDay Int?     @map("recurring_day") @db.Integer
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  notes        String?
+  receiptUrl   String?  @map("receipt_url")
+  isRecurring  Boolean  @default(false) @map("is_recurring")
+  recurringDay Int?     @map("recurring_day")
 
   @@index([userId], map: "idx_expenses_user_id")
   @@index([date(sort: Desc)], map: "idx_expenses_date")
@@ -48,4 +48,64 @@ model Budget {
   @@index([userId], map: "idx_budgets_user_id")
   @@index([userId, year, month], map: "idx_budgets_user_date")
   @@map("budgets")
+}
+
+model FoodReview {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  placeName     String         @map("place_name")
+  placeAddress  String?        @map("place_address")
+  latitude      Decimal?       @db.Decimal(10, 8)
+  longitude     Decimal?       @db.Decimal(11, 8)
+  googlePlaceId String?        @map("google_place_id")
+  overallRating Decimal        @map("overall_rating") @db.Decimal(2, 1)
+  notes         String?
+  visitDate     DateTime       @default(now()) @map("visit_date") @db.Date
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  dishes        Dish[]
+  photos        ReviewPhoto[]
+  ratings       ReviewRating[]
+
+  @@index([userId], map: "idx_food_reviews_user_id")
+  @@index([visitDate(sort: Desc)], map: "idx_food_reviews_date")
+  @@map("food_reviews")
+}
+
+model Dish {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId  String     @map("review_id") @db.Uuid
+  name      String
+  price     Decimal    @db.Decimal(10, 2)
+  notes     String?
+  rating    Decimal?   @db.Decimal(2, 1)
+  expenseId String?    @map("expense_id") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  review    FoodReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId], map: "idx_dishes_review_id")
+  @@map("dishes")
+}
+
+model ReviewRating {
+  id       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId String     @map("review_id") @db.Uuid
+  category String
+  rating   Decimal    @db.Decimal(2, 1)
+  review   FoodReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId], map: "idx_review_ratings_review_id")
+  @@map("review_ratings")
+}
+
+model ReviewPhoto {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId  String     @map("review_id") @db.Uuid
+  url       String
+  caption   String?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  review    FoodReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId], map: "idx_review_photos_review_id")
+  @@map("review_photos")
 }

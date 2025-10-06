@@ -20,9 +20,10 @@ import { Expense } from '@/stores/expense/store';
 interface ExpensesListProps {
   onEdit?: (expense: any) => void;
   expenses?: Expense[];
+  onExpenseClick?: (expense: Expense) => void;
 }
 
-const ExpensesList = observer(({ onEdit, expenses }: ExpensesListProps = {}) => {
+const ExpensesList = observer(({ onEdit, expenses, onExpenseClick }: ExpensesListProps = {}) => {
   const { expensesStore, categoriesStore } = useStores();
   const displayExpenses = expenses || expensesStore.filteredExpenses;
   const [contextMenu, setContextMenu] = useState<{
@@ -42,6 +43,12 @@ const ExpensesList = observer(({ onEdit, expenses }: ExpensesListProps = {}) => 
           }
         : null
     );
+  };
+
+  const handleExpenseClick = (expense: Expense) => {
+    if (onExpenseClick) {
+      onExpenseClick(expense);
+    }
   };
 
   const handleClose = () => {
@@ -100,6 +107,7 @@ const ExpensesList = observer(({ onEdit, expenses }: ExpensesListProps = {}) => 
         return (
           <ListItem
             key={expense.id}
+            onClick={() => handleExpenseClick(expense)}
             onContextMenu={(e) => handleContextMenu(e, expense)}
             sx={{
               px: 2,

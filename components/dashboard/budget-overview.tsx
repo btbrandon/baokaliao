@@ -1,12 +1,17 @@
 'use client';
 
 import { observer } from 'mobx-react-lite';
-import { Box, Card, CardContent, Typography, LinearProgress } from '@mui/material';
+import { Box, Card, CardContent, Typography, LinearProgress, IconButton } from '@mui/material';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useStores } from '@/stores';
-import { MdAccountBalance, MdPieChart, MdShowChart } from 'react-icons/md';
+import { MdAccountBalance, MdPieChart, MdShowChart, MdEdit } from 'react-icons/md';
 
-const BudgetOverview = observer(() => {
+interface BudgetOverviewProps {
+  onEditIncome?: () => void;
+  onEditCategories?: () => void;
+}
+
+const BudgetOverview = observer(({ onEditIncome, onEditCategories }: BudgetOverviewProps) => {
   const { budgetStore, expensesStore } = useStores();
 
   if (!budgetStore.budget) {
@@ -72,12 +77,35 @@ const BudgetOverview = observer(() => {
         sx={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
+          position: 'relative',
+          '&:hover .edit-button': {
+            opacity: 1,
+          },
         }}
       >
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <MdAccountBalance size={24} style={{ marginRight: 8 }} />
-            <Typography variant="h6">Monthly Income</Typography>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <MdAccountBalance size={24} style={{ marginRight: 8 }} />
+              <Typography variant="h6">Monthly Income</Typography>
+            </Box>
+            {onEditIncome && (
+              <IconButton
+                className="edit-button"
+                onClick={onEditIncome}
+                size="small"
+                sx={{
+                  color: 'white',
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                }}
+              >
+                <MdEdit size={20} />
+              </IconButton>
+            )}
           </Box>
           <Typography variant="h3" fontWeight={700}>
             ${budgetStore.budget.monthly_income.toFixed(0)}
@@ -89,11 +117,36 @@ const BudgetOverview = observer(() => {
       </Card>
 
       {/* Card 2: Budget Breakdown (Pie Chart) */}
-      <Card>
+      <Card
+        sx={{
+          position: 'relative',
+          '&:hover .edit-button': {
+            opacity: 1,
+          },
+        }}
+      >
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <MdPieChart size={24} style={{ marginRight: 8 }} />
-            <Typography variant="h6">Budget Breakdown</Typography>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <MdPieChart size={24} style={{ marginRight: 8 }} />
+              <Typography variant="h6">Budget Breakdown</Typography>
+            </Box>
+            {onEditCategories && (
+              <IconButton
+                className="edit-button"
+                onClick={onEditCategories}
+                size="small"
+                sx={{
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <MdEdit size={20} />
+              </IconButton>
+            )}
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: -1 }}>
             <PieChart

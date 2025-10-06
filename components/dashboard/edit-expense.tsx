@@ -22,7 +22,7 @@ interface EditExpenseDialogProps {
   expense: Expense | null;
 }
 
-const EditExpenseDialog = observer(({ open, onClose, expense }: EditExpenseDialogProps) => {
+const EditExpense = observer(({ open, onClose, expense }: EditExpenseDialogProps) => {
   const { expensesStore, categoriesStore } = useStores();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -174,4 +174,4 @@ const EditExpenseDialog = observer(({ open, onClose, expense }: EditExpenseDialo
   );
 });
 
-export default EditExpenseDialog;
+export default EditExpense;

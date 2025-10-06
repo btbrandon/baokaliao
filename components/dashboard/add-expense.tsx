@@ -26,7 +26,7 @@ interface AddExpenseDialogProps {
   onClose: () => void;
 }
 
-const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => {
+const AddExpense = observer(({ open, onClose }: AddExpenseDialogProps) => {
   const { expensesStore, categoriesStore } = useStores();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -324,4 +324,4 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
   );
 });
 
-export default AddExpenseDialog;
+export default AddExpense;

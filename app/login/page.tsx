@@ -75,7 +75,7 @@ export default function LoginPage() {
               Welcome Back
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in to continue to BoLui
+              Sign in to continue to BaoKaLiao
             </Typography>
           </Box>
 

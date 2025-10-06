@@ -23,9 +23,8 @@ interface BudgetSetupDialogProps {
   onClose: () => void;
 }
 
-const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) => {
+const BudgetSetup = observer(({ open, onClose }: BudgetSetupDialogProps) => {
   const { budgetStore } = useStores();
-  const [monthlyIncome, setMonthlyIncome] = useState('');
   const [expensesAmount, setExpensesAmount] = useState('');
   const [investmentsAmount, setInvestmentsAmount] = useState('');
   const [savingsAmount, setSavingsAmount] = useState('');
@@ -36,15 +35,14 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
   useEffect(() => {
     if (budgetStore.budget) {
       const income = budgetStore.budget.monthly_income;
-      setMonthlyIncome(income.toString());
       setExpensesAmount(((income * budgetStore.budget.expenses_percentage) / 100).toFixed(2));
       setInvestmentsAmount(((income * budgetStore.budget.investments_percentage) / 100).toFixed(2));
       setSavingsAmount(((income * budgetStore.budget.savings_percentage) / 100).toFixed(2));
       setOtherAmount(((income * budgetStore.budget.other_percentage) / 100).toFixed(2));
     }
-  }, [budgetStore.budget]);
+  }, [budgetStore.budget, open]);
 
-  const income = parseFloat(monthlyIncome) || 0;
+  const income = budgetStore.budget?.monthly_income || 0;
   const expenses = parseFloat(expensesAmount) || 0;
   const investments = parseFloat(investmentsAmount) || 0;
   const savings = parseFloat(savingsAmount) || 0;
@@ -70,8 +68,8 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
     e.preventDefault();
     setError('');
 
-    if (!monthlyIncome || parseFloat(monthlyIncome) <= 0) {
-      setError('Please enter a valid monthly income');
+    if (!budgetStore.budget) {
+      setError('Please set up your monthly income first');
       return;
     }
 
@@ -88,14 +86,14 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
       const year = now.getFullYear();
 
       const response = await fetch('/api/budget', {
-        method: budgetStore.budget ? 'PUT' : 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           month,
           year,
-          monthly_income: parseFloat(monthlyIncome),
+          monthly_income: budgetStore.budget.monthly_income,
           expenses_percentage: Math.round(expensesPercentage * 100) / 100,
           investments_percentage: Math.round(investmentsPercentage * 100) / 100,
           savings_percentage: Math.round(savingsPercentage * 100) / 100,
@@ -122,9 +120,7 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem', py: 2 }}>
-          {budgetStore.budget ? 'Update Budget' : 'Set Up Monthly Budget'}
-        </DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem', py: 2 }}>Edit Budget</DialogTitle>
         <DialogContent sx={{ py: 2, maxHeight: '70vh', overflowY: 'auto' }}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -132,22 +128,8 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
             </Alert>
           )}
 
-          <Box sx={{ mb: 3, mt: 2 }}>
-            <TextField
-              label="Monthly Income / Salary"
-              type="number"
-              value={monthlyIncome}
-              onChange={(e) => setMonthlyIncome(e.target.value)}
-              required
-              fullWidth
-              size="small"
-              inputProps={{ step: '0.01', min: '0' }}
-              placeholder="0.00"
-            />
-          </Box>
-
           <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
-            Allocate Your Income
+            Allocate Your Income: ${income.toFixed(2)}
           </Typography>
 
           <Stack spacing={1.5}>
@@ -186,6 +168,16 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
                 inputProps={{ step: '0.01', min: '0' }}
                 placeholder="0.00"
                 size="small"
+                sx={{
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button':
+                    {
+                      WebkitAppearance: 'none',
+                      margin: 0,
+                    },
+                }}
               />
             </Paper>
 
@@ -224,6 +216,16 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
                 inputProps={{ step: '0.01', min: '0' }}
                 placeholder="0.00"
                 size="small"
+                sx={{
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button':
+                    {
+                      WebkitAppearance: 'none',
+                      margin: 0,
+                    },
+                }}
               />
             </Paper>
 
@@ -262,6 +264,16 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
                 inputProps={{ step: '0.01', min: '0' }}
                 placeholder="0.00"
                 size="small"
+                sx={{
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button':
+                    {
+                      WebkitAppearance: 'none',
+                      margin: 0,
+                    },
+                }}
               />
             </Paper>
 
@@ -300,6 +312,16 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
                 inputProps={{ step: '0.01', min: '0' }}
                 placeholder="0.00"
                 size="small"
+                sx={{
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button':
+                    {
+                      WebkitAppearance: 'none',
+                      margin: 0,
+                    },
+                }}
               />
             </Paper>
           </Stack>
@@ -359,7 +381,7 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={loading || !isValid}>
-            {loading ? 'Saving...' : budgetStore.budget ? 'Update Budget' : 'Set Budget'}
+            {loading ? 'Saving...' : 'Update'}
           </Button>
         </DialogActions>
       </form>
@@ -367,4 +389,4 @@ const BudgetSetupDialog = observer(({ open, onClose }: BudgetSetupDialogProps) =
   );
 });
 
-export default BudgetSetupDialog;
+export default BudgetSetup;

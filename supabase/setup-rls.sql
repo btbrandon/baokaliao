@@ -1,5 +1,5 @@
 -- ============================================================================
--- BoLui Database Schema with RLS Policies
+-- BaoKaLiao Database Schema with RLS Policies
 -- Run this in Supabase SQL Editor after Prisma has created the tables
 -- ============================================================================
 

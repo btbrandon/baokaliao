@@ -10,49 +10,36 @@ import {
   CardContent,
   Typography,
   Button,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Avatar,
-  Menu,
-  MenuItem,
   Fab,
   CircularProgress,
 } from '@mui/material';
-import {
-  MdAdd,
-  MdAccountCircle,
-  MdLogout,
-  MdTrendingUp,
-  MdTrendingDown,
-  MdReceipt,
-  MdSettings,
-  MdDarkMode,
-  MdLightMode,
-} from 'react-icons/md';
+import { MdAdd, MdSettings } from 'react-icons/md';
 import { createClient } from '@/lib/supabase/client';
 import { useStores } from '@/stores';
-import { useTheme as useCustomTheme } from '@/contexts/theme-context';
-import AddExpenseDialog from '@/components/add-expense-dialog';
-import EditExpenseDialog from '@/components/edit-expense-dialog';
-import ExpensesList from '@/components/expenses-list';
-import BudgetSetupDialog from '@/components/budget-setup-dialog';
-import BudgetOverview from '@/components/budget-overview';
-import MonthSelector from '@/components/month-selector';
-import SavingsRateCard from '@/components/savings-rate-card';
-import ExpenseFilters, { FilterState } from '@/components/expense-filters';
+import { AppNavigation } from '@/components/app-navigation';
+import AddExpense from '@/components/dashboard/add-expense';
+import EditExpense from '@/components/dashboard/edit-expense';
+import ExpenseDetails from '@/components/dashboard/expense-details';
+import ExpensesList from '@/components/dashboard/expenses-list';
+import BudgetSetup from '@/components/dashboard/budget-setup';
+import IncomeSetup from '@/components/dashboard/income-setup';
+import BudgetOverview from '@/components/dashboard/budget-overview';
+import MonthSelector from '@/components/dashboard/month-selector';
+import ExpenseFilters, { FilterState } from '@/components/dashboard/expense-filters';
 import { format } from 'date-fns';
+import { Expense } from '@/stores/expense/store';
 
 const DashboardPage = observer(() => {
   const router = useRouter();
   const supabase = createClient();
   const { userStore, expensesStore, budgetStore } = useStores();
-  const { isDarkMode, toggleTheme } = useCustomTheme();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openAddExpense, setOpenAddExpense] = useState(false);
   const [openEditExpense, setOpenEditExpense] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [openBudgetSetup, setOpenBudgetSetup] = useState(false);
+  const [openIncomeSetup, setOpenIncomeSetup] = useState(false);
+  const [openExpenseDetails, setOpenExpenseDetails] = useState(false);
+  const [selectedExpenseForDetails, setSelectedExpenseForDetails] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
@@ -154,6 +141,11 @@ const DashboardPage = observer(() => {
     setOpenEditExpense(true);
   };
 
+  const handleExpenseClick = (expense: Expense) => {
+    setSelectedExpenseForDetails(expense);
+    setOpenExpenseDetails(true);
+  };
+
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
   };
@@ -197,14 +189,6 @@ const DashboardPage = observer(() => {
     router.push('/login');
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
   if (loading) {
     return (
       <Box
@@ -221,191 +205,175 @@ const DashboardPage = observer(() => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <AppNavigation />
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          bgcolor: 'background.default',
+          mt: 8, // Account for fixed AppBar height
+        }}
       >
-        <Toolbar>
-          <Typography
-            variant="h5"
-            component="div"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}
-          >
-            BoLui
-          </Typography>
-          <IconButton onClick={toggleTheme} size="large" sx={{ mr: 1 }}>
-            {isDarkMode ? <MdLightMode size={24} /> : <MdDarkMode size={24} />}
-          </IconButton>
-          <IconButton onClick={handleMenuOpen} size="large">
-            <Avatar sx={{ bgcolor: 'primary.main' }}>
-              <MdAccountCircle size={24} />
-            </Avatar>
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-            <MenuItem disabled>
-              <Typography variant="body2" color="text.secondary">
-                {userStore.userEmail}
-              </Typography>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                handleMenuClose();
-                setOpenBudgetSetup(true);
-              }}
-            >
-              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                <MdSettings size={18} />
-              </Box>
-              Budget Settings
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                <MdLogout size={18} />
-              </Box>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, sm: 3 } }}>
-        <Box sx={{ mb: 3 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
-              justifyContent: 'space-between',
-              alignItems: { xs: 'stretch', md: 'flex-start' },
-              gap: 2,
-              mb: 2,
-            }}
-          >
-            <Box>
-              <Typography
-                variant="h4"
-                fontWeight={700}
-                gutterBottom
-                sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
-              >
-                Dashboard
-              </Typography>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
-              >
-                {format(new Date(), 'EEEE, MMMM d, yyyy')}
-              </Typography>
-            </Box>
-
-            {/* Month Selector - Top Right */}
-            <Box sx={{ width: { xs: '100%', md: 300 } }}>
-              <MonthSelector
-                selectedDate={expensesStore.selectedMonth}
-                onDateChange={handleMonthChange}
-              />
-            </Box>
-          </Box>
-
-          {!budgetStore.budget && (
-            <Box sx={{ mt: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<MdSettings />}
-                onClick={() => setOpenBudgetSetup(true)}
-                fullWidth
-              >
-                Set Up Budget
-              </Button>
-            </Box>
-          )}
-        </Box>
-
-        {budgetStore.budget && (
-          <Box sx={{ mb: 4 }}>
-            <BudgetOverview />
-          </Box>
-        )}
-
-        <Card>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
-            >
-              <Box>
-                <Typography variant="h6" fontWeight={600}>
-                  Expenses
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {format(expensesStore.selectedMonth, 'MMMM yyyy')}
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                startIcon={<MdAdd />}
-                onClick={() => setOpenAddExpense(true)}
-                size="small"
-                sx={{ display: { xs: 'none', sm: 'flex' } }}
-              >
-                Add Expense
-              </Button>
-            </Box>
-
-            {/* Search and Filters */}
-            <ExpenseFilters onFilterChange={handleFilterChange} />
-
-            {/* Summary for selected month */}
+        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, sm: 3 } }}>
+          <Box sx={{ mb: 3 }}>
             <Box
               sx={{
                 display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                p: 1.5,
+                alignItems: { xs: 'stretch', md: 'flex-start' },
+                gap: 2,
                 mb: 2,
-                bgcolor: 'primary.main',
-                color: 'white',
-                borderRadius: 1.5,
               }}
             >
-              <Typography variant="body2" fontWeight={600}>
-                Total Expenses ({filteredExpenses.length})
-              </Typography>
-              <Typography variant="h6" fontWeight={700}>
-                ${filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
-              </Typography>
+              <Box>
+                <Typography
+                  variant="h4"
+                  fontWeight={700}
+                  gutterBottom
+                  sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
+                >
+                  Dashboard
+                </Typography>
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
+                >
+                  {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                </Typography>
+              </Box>
+
+              {/* Month Selector - Top Right */}
+              <Box sx={{ width: { xs: '100%', md: 300 } }}>
+                <MonthSelector
+                  selectedDate={expensesStore.selectedMonth}
+                  onDateChange={handleMonthChange}
+                />
+              </Box>
             </Box>
 
-            <ExpensesList onEdit={handleEditExpense} expenses={filteredExpenses} />
-          </CardContent>
-        </Card>
-      </Container>
+            {!budgetStore.budget && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<MdSettings />}
+                  onClick={() => setOpenIncomeSetup(true)}
+                  fullWidth
+                >
+                  Set Up Budget
+                </Button>
+              </Box>
+            )}
+          </Box>
 
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          display: { xs: 'flex', md: 'none' },
-        }}
-        onClick={() => setOpenAddExpense(true)}
-      >
-        <MdAdd size={24} />
-      </Fab>
+          {budgetStore.budget && (
+            <Box sx={{ mb: 4 }}>
+              <BudgetOverview
+                onEditIncome={() => setOpenIncomeSetup(true)}
+                onEditCategories={() => setOpenBudgetSetup(true)}
+              />
+            </Box>
+          )}
 
-      <AddExpenseDialog open={openAddExpense} onClose={() => setOpenAddExpense(false)} />
-      <EditExpenseDialog
-        open={openEditExpense}
-        onClose={() => {
-          setOpenEditExpense(false);
-          setSelectedExpense(null);
-        }}
-        expense={selectedExpense}
-      />
-      <BudgetSetupDialog open={openBudgetSetup} onClose={() => setOpenBudgetSetup(false)} />
+          <Card>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                }}
+              >
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Expenses
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {format(expensesStore.selectedMonth, 'MMMM yyyy')}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<MdAdd />}
+                  onClick={() => setOpenAddExpense(true)}
+                  size="small"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                >
+                  Add Expense
+                </Button>
+              </Box>
+
+              {/* Search and Filters */}
+              <ExpenseFilters onFilterChange={handleFilterChange} />
+
+              {/* Summary for selected month */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 1.5,
+                  mb: 2,
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  borderRadius: 1.5,
+                }}
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  Total Expenses ({filteredExpenses.length})
+                </Typography>
+                <Typography variant="h6" fontWeight={700}>
+                  ${filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                </Typography>
+              </Box>
+
+              <ExpensesList
+                onEdit={handleEditExpense}
+                expenses={filteredExpenses}
+                onExpenseClick={handleExpenseClick}
+              />
+            </CardContent>
+          </Card>
+        </Container>
+
+        <Fab
+          color="primary"
+          aria-label="add"
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            display: { xs: 'flex', md: 'none' },
+          }}
+          onClick={() => setOpenAddExpense(true)}
+        >
+          <MdAdd size={24} />
+        </Fab>
+
+        <AddExpense open={openAddExpense} onClose={() => setOpenAddExpense(false)} />
+        <EditExpense
+          open={openEditExpense}
+          onClose={() => {
+            setOpenEditExpense(false);
+            setSelectedExpense(null);
+          }}
+          expense={selectedExpense}
+        />
+        <ExpenseDetails
+          open={openExpenseDetails}
+          onClose={() => {
+            setOpenExpenseDetails(false);
+            setSelectedExpenseForDetails(null);
+          }}
+          expense={selectedExpenseForDetails}
+        />
+        <BudgetSetup open={openBudgetSetup} onClose={() => setOpenBudgetSetup(false)} />
+        <IncomeSetup open={openIncomeSetup} onClose={() => setOpenIncomeSetup(false)} />
+      </Box>
     </Box>
   );
 });

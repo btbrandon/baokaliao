@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import { Providers } from '@/components/providers';
@@ -15,9 +15,14 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'BoLui',
-  description: 'Track your expenses with ease',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=5',
+  title: 'BaoKaLiao',
+  description: 'Your all-in-one app',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

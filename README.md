@@ -1,4 +1,4 @@
-# BoLui - Expense Tracker
+# BaoKaLiao - Expense Tracker
 
 A modern expense tracking application built with Next.js 14, TypeScript, Material-UI, and Supabase.
 
@@ -59,7 +59,7 @@ npm run dev
 ## Project Structure
 
 ```
-BoLui/
+BaoKaLiao/
 ├── app/                    # Next.js App Router pages
 │   ├── dashboard/         # Dashboard page
 │   ├── login/            # Login page
