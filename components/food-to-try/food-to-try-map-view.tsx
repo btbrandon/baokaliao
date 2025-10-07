@@ -114,25 +114,25 @@ export function FoodToTryMapView({ items, onItemClick }: FoodToTryMapViewProps) 
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 0.5, mb: 0.75, flexWrap: 'wrap' }}>
-                  <Chip 
-                    label={selectedItem.cuisine} 
-                    size="small" 
-                    sx={{ 
-                      height: 20, 
+                  <Chip
+                    label={selectedItem.cuisine}
+                    size="small"
+                    sx={{
+                      height: 20,
                       fontSize: '0.7rem',
                       bgcolor: 'primary.main',
                       color: 'white',
                       fontWeight: 500,
-                    }} 
+                    }}
                   />
                 </Box>
                 {selectedItem.location && (
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.75 }}>
                     <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.2 }} />
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontSize: '0.8rem', 
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '0.8rem',
                         color: 'text.secondary',
                         lineHeight: 1.3,
                       }}
@@ -142,10 +142,10 @@ export function FoodToTryMapView({ items, onItemClick }: FoodToTryMapViewProps) 
                   </Box>
                 )}
                 {selectedItem.description && (
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
                       mb: 1,
                       fontSize: '0.8rem',
                       lineHeight: 1.4,
@@ -162,7 +162,7 @@ export function FoodToTryMapView({ items, onItemClick }: FoodToTryMapViewProps) 
                 <Typography
                   className="view-details"
                   variant="body2"
-                  sx={{ 
+                  sx={{
                     color: 'primary.main',
                     fontWeight: 600,
                     fontSize: '0.85rem',

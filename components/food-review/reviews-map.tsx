@@ -161,7 +161,14 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                 <Typography variant="subtitle1" fontWeight="600" sx={{ lineHeight: 1.3, mb: 0.5 }}>
                   {selectedReview.place_name}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 0.75,
+                  }}
+                >
                   <Rating
                     value={Number(selectedReview.overall_rating)}
                     readOnly
@@ -169,9 +176,9 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                     precision={0.5}
                     sx={{ fontSize: '1rem' }}
                   />
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
+                  <Typography
+                    variant="caption"
+                    sx={{
                       color: 'text.secondary',
                       fontSize: '0.75rem',
                       fontWeight: 600,
@@ -180,18 +187,31 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                     {Number(selectedReview.overall_rating).toFixed(1)}
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 0.5, mb: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 0.5,
+                    mb: 0.75,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.secondary', fontSize: '0.75rem' }}
+                  >
                     {format(new Date(selectedReview.visit_date), 'MMM d, yyyy')}
                   </Typography>
                   {selectedReview.dishes && selectedReview.dishes.length > 0 && (
                     <>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>•</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        •
+                      </Typography>
                       <Chip
                         label={`${selectedReview.dishes.length} ${selectedReview.dishes.length === 1 ? 'dish' : 'dishes'}`}
                         size="small"
-                        sx={{ 
-                          height: 18, 
+                        sx={{
+                          height: 18,
                           fontSize: '0.7rem',
                           bgcolor: 'grey.200',
                           color: 'text.primary',
@@ -202,10 +222,10 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                   )}
                 </Box>
                 {selectedReview.notes && (
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
                       mb: 0.75,
                       fontSize: '0.8rem',
                       lineHeight: 1.4,
@@ -223,7 +243,7 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                   <Typography
                     className="view-details"
                     variant="body2"
-                    sx={{ 
+                    sx={{
                       color: 'primary.main',
                       fontWeight: 600,
                       fontSize: '0.85rem',
