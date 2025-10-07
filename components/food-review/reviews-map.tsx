@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Typography, Card, CardContent, Rating, Chip } from '@mui/material';
+import { Box, Typography, Rating, Chip } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import Map, { Marker, Popup } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -123,12 +123,18 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
             closeOnClick={false}
             anchor="bottom"
             offset={25}
+            maxWidth="320px"
           >
-            <Card
+            <Box
               sx={{
                 minWidth: 250,
-                maxWidth: 300,
+                maxWidth: 320,
                 cursor: onViewReview ? 'pointer' : 'default',
+                '&:hover': {
+                  '& .view-details': {
+                    textDecoration: 'underline',
+                  },
+                },
               }}
               onClick={() => {
                 if (onViewReview && selectedReview) {
@@ -137,33 +143,98 @@ export const ReviewsMap = observer(({ onViewReview }: ReviewsMapProps) => {
                 }
               }}
             >
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="subtitle1" fontWeight="bold">
+              {selectedReview.photos && selectedReview.photos.length > 0 && (
+                <Box
+                  component="img"
+                  src={selectedReview.photos[0].url}
+                  alt={selectedReview.place_name}
+                  sx={{
+                    width: '100%',
+                    height: 140,
+                    objectFit: 'cover',
+                    borderRadius: '4px 4px 0 0',
+                    mb: 1,
+                  }}
+                />
+              )}
+              <Box sx={{ px: 0.5, pb: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ lineHeight: 1.3, mb: 0.5 }}>
                   {selectedReview.place_name}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                  {format(new Date(selectedReview.visit_date), 'MMM d, yyyy')}
-                </Typography>
-                <Rating
-                  value={selectedReview.overall_rating}
-                  readOnly
-                  size="small"
-                  precision={0.5}
-                />
-                {selectedReview.dishes && selectedReview.dishes.length > 0 && (
-                  <Chip
-                    label={`${selectedReview.dishes.length} dishes`}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+                  <Rating
+                    value={Number(selectedReview.overall_rating)}
+                    readOnly
                     size="small"
-                    sx={{ mt: 1 }}
+                    precision={0.5}
+                    sx={{ fontSize: '1rem' }}
                   />
-                )}
-                {onViewReview && (
-                  <Typography variant="caption" color="primary" display="block" sx={{ mt: 1 }}>
-                    Click to view details
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {Number(selectedReview.overall_rating).toFixed(1)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 0.5, mb: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                    {format(new Date(selectedReview.visit_date), 'MMM d, yyyy')}
+                  </Typography>
+                  {selectedReview.dishes && selectedReview.dishes.length > 0 && (
+                    <>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>•</Typography>
+                      <Chip
+                        label={`${selectedReview.dishes.length} ${selectedReview.dishes.length === 1 ? 'dish' : 'dishes'}`}
+                        size="small"
+                        sx={{ 
+                          height: 18, 
+                          fontSize: '0.7rem',
+                          bgcolor: 'grey.200',
+                          color: 'text.primary',
+                          fontWeight: 500,
+                        }}
+                      />
+                    </>
+                  )}
+                </Box>
+                {selectedReview.notes && (
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mb: 0.75,
+                      fontSize: '0.8rem',
+                      lineHeight: 1.4,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}
+                  >
+                    {selectedReview.notes}
                   </Typography>
                 )}
-              </CardContent>
-            </Card>
+                {onViewReview && (
+                  <Typography
+                    className="view-details"
+                    variant="body2"
+                    sx={{ 
+                      color: 'primary.main',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      mt: 0.5,
+                    }}
+                  >
+                    View Details →
+                  </Typography>
+                )}
+              </Box>
+            </Box>
           </Popup>
         )}
       </Map>

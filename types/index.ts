@@ -122,3 +122,6 @@ export interface CreateRatingInput {
   category: string;
   rating: number;
 }
+
+// Re-export food-to-try types
+export * from './food-to-try';

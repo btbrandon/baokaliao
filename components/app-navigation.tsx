@@ -30,7 +30,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
 } from 'react-icons/md';
-import { Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Star as StarIcon } from '@mui/icons-material';
 import { createClient } from '@/lib/supabase/client';
 import { useStores } from '@/stores';
 import { useTheme as useCustomTheme } from '@/contexts/theme-context';
@@ -42,7 +42,7 @@ export const AppNavigation = () => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { userStore, expensesStore, budgetStore, foodReviewStore } = useStores();
+  const { userStore, expensesStore, budgetStore, foodReviewStore, foodToTryStore } = useStores();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -67,6 +67,7 @@ export const AppNavigation = () => {
     expensesStore.clear();
     budgetStore.clear();
     foodReviewStore.clear();
+    foodToTryStore.clear();
     router.push('/login');
   };
 
@@ -84,7 +85,8 @@ export const AppNavigation = () => {
 
   const navigationItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <MdDashboard size={24} /> },
-    { label: 'Food Reviews', path: '/food-reviews', icon: <MdRestaurant size={24} /> },
+    { label: 'Food Reviews', path: '/food-reviews', icon: <StarIcon sx={{ fontSize: 24 }} /> },
+    { label: 'Food to Try', path: '/food-to-try', icon: <MdRestaurant size={24} /> },
   ];
 
   const handleNavigate = (path: string) => {
