@@ -20,6 +20,7 @@ export class ExpensesStore {
   loading: boolean = false;
   error: string | null = null;
   selectedMonth: Date = new Date(); // Track selected month
+  loaded: boolean = false; // Track if data has been fetched
 
   constructor() {
     makeAutoObservable(this);
@@ -31,6 +32,36 @@ export class ExpensesStore {
 
   setExpenses(expenses: Expense[]) {
     this.expenses = expenses;
+    this.loaded = true;
+  }
+
+  // Fetch expenses with caching
+  async fetchExpenses(force = false) {
+    // Skip fetch if already loaded and not forced
+    if (this.loaded && !force) {
+      return;
+    }
+
+    this.setLoading(true);
+    this.setError(null);
+
+    try {
+      const response = await fetch('/api/expenses');
+      if (!response.ok) throw new Error('Failed to fetch expenses');
+
+      const data = await response.json();
+      this.setExpenses(data || []);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      this.setError('Failed to fetch expenses');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Force refresh from database
+  async refresh() {
+    return this.fetchExpenses(true);
   }
 
   addExpense(expense: Expense) {
@@ -85,6 +116,15 @@ export class ExpensesStore {
 
   get recentExpenses() {
     return this.filteredExpenses.slice(0, 10);
+  }
+
+  // Clear all data (e.g., on logout)
+  clear() {
+    this.expenses = [];
+    this.loaded = false;
+    this.loading = false;
+    this.error = null;
+    this.selectedMonth = new Date();
   }
 }
 

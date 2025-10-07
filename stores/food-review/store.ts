@@ -6,12 +6,18 @@ export class FoodReviewStore {
   selectedReview: FoodReview | null = null;
   loading = false;
   error: string | null = null;
+  loaded = false; // Track if data has been fetched
 
   constructor() {
     makeAutoObservable(this);
   }
 
-  async fetchReviews() {
+  async fetchReviews(force = false) {
+    // Skip fetch if already loaded and not forced
+    if (this.loaded && !force) {
+      return;
+    }
+
     this.loading = true;
     this.error = null;
 
@@ -22,6 +28,7 @@ export class FoodReviewStore {
       const data = await response.json();
       runInAction(() => {
         this.reviews = data;
+        this.loaded = true;
         this.loading = false;
       });
     } catch (error) {
@@ -32,7 +39,23 @@ export class FoodReviewStore {
     }
   }
 
-  async getReview(id: string) {
+  // Force refresh from database
+  async refresh() {
+    return this.fetchReviews(true);
+  }
+
+  async getReview(id: string, force = false) {
+    // Check if review exists in cache
+    if (!force) {
+      const cachedReview = this.reviews.find((r) => r.id === id);
+      if (cachedReview) {
+        runInAction(() => {
+          this.selectedReview = cachedReview;
+        });
+        return;
+      }
+    }
+
     this.loading = true;
     this.error = null;
 
@@ -43,6 +66,11 @@ export class FoodReviewStore {
       const data = await response.json();
       runInAction(() => {
         this.selectedReview = data;
+        // Update cache if review exists
+        const index = this.reviews.findIndex((r) => r.id === id);
+        if (index !== -1) {
+          this.reviews[index] = data;
+        }
         this.loading = false;
       });
     } catch (error) {
@@ -181,6 +209,15 @@ export class FoodReviewStore {
   }
 
   clearError() {
+    this.error = null;
+  }
+
+  // Clear all data (e.g., on logout)
+  clear() {
+    this.reviews = [];
+    this.selectedReview = null;
+    this.loaded = false;
+    this.loading = false;
     this.error = null;
   }
 }

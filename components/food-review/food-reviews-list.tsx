@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -8,19 +8,18 @@ import {
   Typography,
   Rating,
   Chip,
-  IconButton,
-  CardActions,
   ImageList,
   ImageListItem,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Restaurant as RestaurantIcon,
-} from '@mui/icons-material';
+import { Restaurant as RestaurantIcon } from '@mui/icons-material';
 import { observer } from 'mobx-react-lite';
 import { useStores } from '@/stores';
 import { formatPrice, getTotalDishesPrice } from '@/utils/food-review/utils';
+import { getRatingColor, getRatingBgColor } from '@/utils/food-review/rating-colors';
 import { format } from 'date-fns';
 import Map, { Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -32,21 +31,11 @@ interface FoodReviewsListProps {
 
 export const FoodReviewsList = observer(({ onEdit, onView }: FoodReviewsListProps) => {
   const { foodReviewStore } = useStores();
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     foodReviewStore.fetchReviews();
   }, []);
-
-  const handleDelete = async (reviewId: string) => {
-    if (confirm('Are you sure you want to delete this review?')) {
-      try {
-        await foodReviewStore.deleteReview(reviewId);
-      } catch (error) {
-        console.error('Error deleting review:', error);
-        alert('Failed to delete review');
-      }
-    }
-  };
 
   if (foodReviewStore.loading) {
     return (
@@ -124,12 +113,19 @@ export const FoodReviewsList = observer(({ onEdit, onView }: FoodReviewsListProp
               <Box sx={{ mb: 2 }}>
                 <ImageList cols={3} gap={4} sx={{ margin: 0 }}>
                   {review.photos.slice(0, 3).map((photo, idx) => (
-                    <ImageListItem key={photo.id || idx}>
+                    <ImageListItem
+                      key={photo.id || idx}
+                      sx={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage(photo.url);
+                      }}
+                    >
                       <img
                         src={photo.url}
                         alt={`Photo ${idx + 1}`}
                         loading="lazy"
-                        style={{ borderRadius: 4, height: 100, objectFit: 'cover' }}
+                        style={{ borderRadius: 4, height: 180, objectFit: 'cover' }}
                       />
                     </ImageListItem>
                   ))}
@@ -192,9 +188,6 @@ export const FoodReviewsList = observer(({ onEdit, onView }: FoodReviewsListProp
                     </Typography>
                   </Box>
                 </Box>
-                {review.dishes.some((d) => d.expense_id) && (
-                  <Chip label="Added to Expenses" size="small" color="primary" sx={{ mt: 1 }} />
-                )}
               </Box>
             )}
 
@@ -205,6 +198,15 @@ export const FoodReviewsList = observer(({ onEdit, onView }: FoodReviewsListProp
                     key={rating.id}
                     label={`${rating.category}: ${rating.rating.toFixed(1)}`}
                     size="small"
+                    sx={{
+                      bgcolor: getRatingBgColor(rating.rating),
+                      borderColor: getRatingColor(rating.rating),
+                      color: getRatingColor(rating.rating),
+                      fontWeight: 600,
+                      '& .MuiChip-label': {
+                        px: 1.5,
+                      },
+                    }}
                     variant="outlined"
                   />
                 ))}
@@ -213,6 +215,48 @@ export const FoodReviewsList = observer(({ onEdit, onView }: FoodReviewsListProp
           </CardContent>
         </Card>
       ))}
+
+      {/* Image Lightbox */}
+      <Dialog
+        open={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            boxShadow: 'none',
+          },
+        }}
+      >
+        <DialogContent
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            p: 2,
+            minHeight: '80vh',
+          }}
+        >
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Full size"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: 8,
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}>
+          <Button onClick={() => setSelectedImage(null)} sx={{ color: 'white' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 });

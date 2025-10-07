@@ -42,7 +42,7 @@ export const AppNavigation = () => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { userStore } = useStores();
+  const { userStore, expensesStore, budgetStore, foodReviewStore } = useStores();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -62,7 +62,11 @@ export const AppNavigation = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // Clear all stores on logout
     userStore.clearUser();
+    expensesStore.clear();
+    budgetStore.clear();
+    foodReviewStore.clear();
     router.push('/login');
   };
 

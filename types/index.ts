@@ -52,6 +52,8 @@ export interface FoodReview {
   overall_rating: number;
   notes?: string;
   visit_date: string;
+  expense_id?: string;
+  bill_adjustments?: BillAdjustments;
   created_at: string;
   updated_at: string;
   dishes?: Dish[];
@@ -80,6 +82,7 @@ export interface ReviewRating {
 export interface ReviewPhoto {
   id: string;
   review_id: string;
+  user_id: string;
   url: string;
   caption?: string;
   created_at: string;

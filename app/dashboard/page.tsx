@@ -47,48 +47,6 @@ const DashboardPage = observer(() => {
   });
 
   useEffect(() => {
-    const fetchExpenses = async () => {
-      expensesStore.setLoading(true);
-      try {
-        const response = await fetch('/api/expenses');
-        if (response.ok) {
-          const data = await response.json();
-          expensesStore.setExpenses(data || []);
-        } else {
-          expensesStore.setError('Failed to fetch expenses');
-        }
-      } catch (error) {
-        console.error('Error fetching expenses:', error);
-        expensesStore.setError('Failed to fetch expenses');
-      }
-      expensesStore.setLoading(false);
-    };
-
-    const fetchBudget = async () => {
-      budgetStore.setLoading(true);
-      budgetStore.setError(null); // Clear any previous errors
-      try {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
-        const response = await fetch(`/api/budget?month=${month}&year=${year}`);
-        if (response.ok) {
-          const data = await response.json();
-          budgetStore.setBudget(data);
-        } else if (response.status === 404) {
-          // Silently handle missing budget - this is expected
-          budgetStore.setBudget(null);
-        } else {
-          console.error('Unexpected error fetching budget:', response.status);
-          budgetStore.setError('Failed to fetch budget');
-        }
-      } catch (error) {
-        console.error('Error fetching budget:', error);
-        budgetStore.setError('Failed to fetch budget');
-      }
-      budgetStore.setLoading(false);
-    };
-
     const checkUser = async () => {
       const {
         data: { user },
@@ -98,7 +56,15 @@ const DashboardPage = observer(() => {
         router.push('/login');
       } else {
         userStore.setUser(user);
-        await Promise.all([fetchExpenses(), fetchBudget()]);
+
+        // Fetch expenses (will use cache if already loaded)
+        await expensesStore.fetchExpenses();
+
+        // Fetch budget for current month (will use cache if already loaded)
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        await budgetStore.fetchBudget(month, year);
       }
       setLoading(false);
     };
@@ -110,30 +76,10 @@ const DashboardPage = observer(() => {
   const handleMonthChange = async (date: Date) => {
     expensesStore.setSelectedMonth(date);
 
-    // Fetch budget for selected month
+    // Fetch budget for selected month (will use cache if already loaded)
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
-
-    budgetStore.setLoading(true);
-    budgetStore.setError(null); // Clear any previous errors
-    try {
-      const response = await fetch(`/api/budget?month=${month}&year=${year}`);
-      if (response.ok) {
-        const data = await response.json();
-        budgetStore.setBudget(data);
-      } else if (response.status === 404) {
-        // Silently handle missing budget - this is expected behavior
-        budgetStore.setBudget(null);
-      } else {
-        // Only log non-404 errors
-        console.error('Unexpected error fetching budget:', response.status);
-        budgetStore.setError('Failed to fetch budget');
-      }
-    } catch (error) {
-      console.error('Error fetching budget:', error);
-      budgetStore.setError('Failed to fetch budget');
-    }
-    budgetStore.setLoading(false);
+    await budgetStore.fetchBudget(month, year);
   };
 
   const handleEditExpense = (expense: any) => {
@@ -185,7 +131,10 @@ const DashboardPage = observer(() => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // Clear all stores on logout
     userStore.clearUser();
+    expensesStore.clear();
+    budgetStore.clear();
     router.push('/login');
   };
 

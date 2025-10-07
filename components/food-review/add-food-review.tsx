@@ -110,6 +110,15 @@ export const AddFoodReview = observer(
             if (review.photos) {
               setPhotos(review.photos.map((p) => p.url));
             }
+            // Load bill adjustments if they exist
+            if (review.bill_adjustments) {
+              setBillDetails({
+                applyGst: review.bill_adjustments.apply_gst,
+                applyServiceCharge: review.bill_adjustments.apply_service_charge,
+                splitBill: review.bill_adjustments.split_bill,
+                numberOfPeople: review.bill_adjustments.number_of_people,
+              });
+            }
           }
         };
         loadReview();

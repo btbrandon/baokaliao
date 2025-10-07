@@ -26,6 +26,8 @@ export class BudgetStore {
   budget: Budget | null = null;
   loading: boolean = false;
   error: string | null = null;
+  loaded: boolean = false; // Track if data has been fetched
+  loadedMonth: string | null = null; // Track which month was loaded (format: YYYY-MM)
 
   constructor() {
     makeAutoObservable(this);
@@ -33,6 +35,48 @@ export class BudgetStore {
 
   setBudget(budget: Budget | null) {
     this.budget = budget;
+    if (budget) {
+      this.loaded = true;
+      this.loadedMonth = `${budget.year}-${String(budget.month).padStart(2, '0')}`;
+    } else {
+      this.loaded = true; // Mark as loaded even if null (no budget for this month)
+    }
+  }
+
+  // Fetch budget with caching
+  async fetchBudget(month: number, year: number, force = false) {
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+    // Skip fetch if already loaded for this month and not forced
+    if (this.loaded && this.loadedMonth === monthKey && !force) {
+      return;
+    }
+
+    this.setLoading(true);
+    this.setError(null);
+
+    try {
+      const response = await fetch(`/api/budget?month=${month}&year=${year}`);
+      if (response.ok) {
+        const data = await response.json();
+        this.setBudget(data);
+      } else if (response.status === 404) {
+        this.setBudget(null);
+      } else {
+        console.error('Unexpected error fetching budget:', response.status);
+        this.setError('Failed to fetch budget');
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+      this.setError('Failed to fetch budget');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Force refresh from database
+  async refresh(month: number, year: number) {
+    return this.fetchBudget(month, year, true);
   }
 
   setLoading(loading: boolean) {
@@ -95,6 +139,15 @@ export class BudgetStore {
 
   get remainingIncome() {
     return this.monthlyIncome - this.allocations.reduce((sum, a) => sum + a.amount, 0);
+  }
+
+  // Clear all data (e.g., on logout)
+  clear() {
+    this.budget = null;
+    this.loaded = false;
+    this.loadedMonth = null;
+    this.loading = false;
+    this.error = null;
   }
 }
 
