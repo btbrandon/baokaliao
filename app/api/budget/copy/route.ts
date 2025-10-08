@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { budgetService } from '@/services/budget/service';
 
+export const runtime = 'edge';
+
 // POST /api/budget/copy
 export async function POST(request: NextRequest) {
   try {

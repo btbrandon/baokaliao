@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { expenseService } from '@/services/expense/service';
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();
@@ -44,7 +46,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const body = await request.json();
-    const { amount, description, category, date } = body;
 
     const expense = await expenseService.updateExpense(params.id, {
       ...(body.amount && { amount: parseFloat(body.amount) }),

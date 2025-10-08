@@ -10,7 +10,6 @@ import {
   Select,
   MenuItem,
   TextField,
-  Chip,
   Typography,
   ToggleButtonGroup,
   ToggleButton,
@@ -31,7 +30,6 @@ import { FoodToTryMapView } from '@/components/food-to-try/food-to-try-map-view'
 import { RouletteDialog } from '@/components/food-to-try/roulette-dialog';
 import { AppNavigation } from '@/components/app-navigation';
 import { FoodToTry, CreateFoodToTryInput } from '@/types/food-to-try';
-import { getCountryFlag } from '@/utils/country-flags';
 
 export default observer(function FoodToTryPage() {
   const { foodToTryStore } = useStores();
@@ -144,7 +142,7 @@ export default observer(function FoodToTryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
-            sx={{ minWidth: 200 }}
+            sx={{ minWidth: 300 }}
             placeholder="Search name, description..."
           />
 
@@ -164,7 +162,7 @@ export default observer(function FoodToTryPage() {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          {/* <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Country</InputLabel>
             <Select
               value={selectedLocation}
@@ -178,7 +176,7 @@ export default observer(function FoodToTryPage() {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
 
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Sort By</InputLabel>

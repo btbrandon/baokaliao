@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { prisma } from '@/lib/prisma/prisma';
+import { prisma } from '@/lib/prisma';
+
+export const runtime = 'edge';
 
 // Example API route using Prisma
 // GET /api/expenses/prisma - Get all expenses for the authenticated user
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
 

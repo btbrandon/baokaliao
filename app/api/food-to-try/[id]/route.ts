@@ -6,6 +6,8 @@ import {
   deleteFoodToTryItem,
 } from '@/services/food-to-try/service';
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();

@@ -84,6 +84,44 @@ BaoKaLiao/
 
 ## Available Scripts
 
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run pages:build` - Build for Cloudflare Pages
+- `npm run pages:preview` - Preview Cloudflare Pages build locally
+- `npm run pages:deploy` - Deploy to Cloudflare Pages
+
+## Deployment
+
+### Deploy to Cloudflare Pages
+
+This app is configured to deploy to Cloudflare Pages using Wrangler.
+
+**Quick Deploy:**
+
+```bash
+npx wrangler login
+npm run pages:deploy
+```
+
+**Git-Based Deployment (Recommended):**
+
+1. Push your code to GitHub/GitLab
+2. Connect repository in Cloudflare Dashboard
+3. Set build command: `npm run pages:build`
+4. Set build output: `.vercel/output/static`
+5. Add environment variables
+6. Automatic deployments on every push!
+
+For detailed instructions, see:
+
+- [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) - Quick start guide
+- [CLOUDFLARE_DEPLOYMENT.md](./CLOUDFLARE_DEPLOYMENT.md) - Comprehensive guide
+
+## Available Scripts
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm start` - Start production server

@@ -262,16 +262,6 @@ export function RouletteDialog({ open, onClose, items, onSelectItem }: RouletteD
                         {currentItem.description}
                       </Typography>
                     )}
-
-                    {selectedItem && (
-                      <Typography
-                        variant="h6"
-                        color="success.main"
-                        sx={{ mt: 2, fontWeight: 'bold' }}
-                      >
-                        🎉 Winner! 🎉
-                      </Typography>
-                    )}
                   </Box>
                 )}
               </Paper>
