@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import {
   Dialog,
@@ -13,30 +13,41 @@ import {
   Box,
   Alert,
 } from '@mui/material';
-import { createClient } from '@/lib/supabase/client';
 import { useStores } from '@/stores';
+import { Expense } from '@/stores/expense/store';
 
-interface AddExpenseDialogProps {
+interface EditExpenseDialogProps {
   open: boolean;
   onClose: () => void;
+  expense: Expense | null;
 }
 
-const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => {
-  const supabase = createClient();
-  const { userStore, expensesStore, categoriesStore } = useStores();
+const EditExpense = observer(({ open, onClose, expense }: EditExpenseDialogProps) => {
+  const { expensesStore, categoriesStore } = useStores();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (expense) {
+      setAmount(expense.amount.toString());
+      setDescription(expense.description);
+      setCategory(expense.category);
+      setDate(expense.date);
+    }
+  }, [expense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    if (!expense) return;
+
     if (!amount || !description || !category) {
-      setError('Please fill in all fields');
+      setError('Please fill in all required fields');
       return;
     }
 
@@ -49,26 +60,30 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
     setLoading(true);
 
     try {
-      const { data, error: insertError } = await supabase
-        .from('expenses')
-        .insert([
-          {
-            user_id: userStore.user?.id,
-            amount: amountNum,
-            description,
-            category,
-            date,
-          },
-        ])
-        .select()
-        .single();
+      const expenseDate = date || new Date().toISOString().split('T')[0];
 
-      if (insertError) {
-        setError(insertError.message);
-      } else if (data) {
-        expensesStore.addExpense(data);
-        handleClose();
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          description,
+          category,
+          date: expenseDate,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || 'Failed to update expense');
+        return;
       }
+
+      const data = await response.json();
+      expensesStore.updateExpense(expense.id, data);
+      handleClose();
     } catch {
       setError('An unexpected error occurred');
     } finally {
@@ -80,15 +95,17 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
     setAmount('');
     setDescription('');
     setCategory('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate('');
     setError('');
     onClose();
   };
 
+  if (!expense) return null;
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontWeight: 600, fontSize: '1.5rem' }}>Add New Expense</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, fontSize: '1.5rem' }}>Edit Expense</DialogTitle>
         <DialogContent>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -132,15 +149,15 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
               ))}
             </TextField>
             <TextField
-              label="Date"
+              label="Date (Optional)"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              required
               fullWidth
               InputLabelProps={{
                 shrink: true,
               }}
+              helperText="Leave empty to use today's date"
             />
           </Box>
         </DialogContent>
@@ -149,7 +166,7 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? 'Adding...' : 'Add Expense'}
+            {loading ? 'Updating...' : 'Update Expense'}
           </Button>
         </DialogActions>
       </form>
@@ -157,4 +174,4 @@ const AddExpenseDialog = observer(({ open, onClose }: AddExpenseDialogProps) => 
   );
 });
 
-export default AddExpenseDialog;
+export default EditExpense;

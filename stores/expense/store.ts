@@ -7,20 +7,61 @@ export interface Expense {
   description: string;
   category: string;
   date: string;
+  notes?: string | null;
+  receipt_url?: string | null;
+  is_recurring?: boolean;
+  recurring_day?: number | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export class ExpensesStore {
   expenses: Expense[] = [];
   loading: boolean = false;
   error: string | null = null;
+  selectedMonth: Date = new Date(); // Track selected month
+  loaded: boolean = false; // Track if data has been fetched
 
   constructor() {
     makeAutoObservable(this);
   }
 
+  setSelectedMonth(date: Date) {
+    this.selectedMonth = date;
+  }
+
   setExpenses(expenses: Expense[]) {
     this.expenses = expenses;
+    this.loaded = true;
+  }
+
+  // Fetch expenses with caching
+  async fetchExpenses(force = false) {
+    // Skip fetch if already loaded and not forced
+    if (this.loaded && !force) {
+      return;
+    }
+
+    this.setLoading(true);
+    this.setError(null);
+
+    try {
+      const response = await fetch('/api/expenses');
+      if (!response.ok) throw new Error('Failed to fetch expenses');
+
+      const data = await response.json();
+      this.setExpenses(data || []);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      this.setError('Failed to fetch expenses');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Force refresh from database
+  async refresh() {
+    return this.fetchExpenses(true);
   }
 
   addExpense(expense: Expense) {
@@ -47,11 +88,21 @@ export class ExpensesStore {
   }
 
   get totalExpenses() {
-    return this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    return this.filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  get filteredExpenses() {
+    const year = this.selectedMonth.getFullYear();
+    const month = this.selectedMonth.getMonth();
+
+    return this.expenses.filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getFullYear() === year && expenseDate.getMonth() === month;
+    });
   }
 
   get expensesByCategory() {
-    return this.expenses.reduce(
+    return this.filteredExpenses.reduce(
       (acc, expense) => {
         if (!acc[expense.category]) {
           acc[expense.category] = 0;
@@ -64,7 +115,16 @@ export class ExpensesStore {
   }
 
   get recentExpenses() {
-    return this.expenses.slice(0, 10);
+    return this.filteredExpenses.slice(0, 10);
+  }
+
+  // Clear all data (e.g., on logout)
+  clear() {
+    this.expenses = [];
+    this.loaded = false;
+    this.loading = false;
+    this.error = null;
+    this.selectedMonth = new Date();
   }
 }
 

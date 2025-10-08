@@ -10,48 +10,43 @@ import {
   CardContent,
   Typography,
   Button,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Avatar,
-  Menu,
-  MenuItem,
   Fab,
   CircularProgress,
 } from '@mui/material';
-import { Add, AccountCircle, Logout, TrendingUp, TrendingDown, Receipt } from '@mui/icons-material';
+import { MdAdd, MdSettings } from 'react-icons/md';
 import { createClient } from '@/lib/supabase/client';
 import { useStores } from '@/stores';
-import AddExpenseDialog from '@/components/add-expense-dialog';
-import ExpensesList from '@/components/expenses-list';
+import { AppNavigation } from '@/components/app-navigation';
+import AddExpense from '@/components/dashboard/add-expense';
+import EditExpense from '@/components/dashboard/edit-expense';
+import ExpenseDetails from '@/components/dashboard/expense-details';
+import ExpensesList from '@/components/dashboard/expenses-list';
+import BudgetSetup from '@/components/dashboard/budget-setup';
+import IncomeSetup from '@/components/dashboard/income-setup';
+import BudgetOverview from '@/components/dashboard/budget-overview';
+import MonthSelector from '@/components/dashboard/month-selector';
+import ExpenseFilters, { FilterState } from '@/components/dashboard/expense-filters';
 import { format } from 'date-fns';
+import { Expense } from '@/stores/expense/store';
 
 const DashboardPage = observer(() => {
   const router = useRouter();
   const supabase = createClient();
-  const { userStore, expensesStore } = useStores();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { userStore, expensesStore, budgetStore } = useStores();
   const [openAddExpense, setOpenAddExpense] = useState(false);
+  const [openEditExpense, setOpenEditExpense] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [openBudgetSetup, setOpenBudgetSetup] = useState(false);
+  const [openIncomeSetup, setOpenIncomeSetup] = useState(false);
+  const [openExpenseDetails, setOpenExpenseDetails] = useState(false);
+  const [selectedExpenseForDetails, setSelectedExpenseForDetails] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: '',
+    sortBy: 'date-desc',
+  });
 
   useEffect(() => {
-    const fetchExpenses = async (userId: string) => {
-      expensesStore.setLoading(true);
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching expenses:', error);
-        expensesStore.setError(error.message);
-      } else {
-        expensesStore.setExpenses(data || []);
-      }
-      expensesStore.setLoading(false);
-    };
-
     const checkUser = async () => {
       const {
         data: { user },
@@ -61,7 +56,15 @@ const DashboardPage = observer(() => {
         router.push('/login');
       } else {
         userStore.setUser(user);
-        await fetchExpenses(user.id);
+
+        // Fetch expenses (will use cache if already loaded)
+        await expensesStore.fetchExpenses();
+
+        // Fetch budget for current month (will use cache if already loaded)
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        await budgetStore.fetchBudget(month, year);
       }
       setLoading(false);
     };
@@ -70,18 +73,69 @@ const DashboardPage = observer(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleMonthChange = async (date: Date) => {
+    expensesStore.setSelectedMonth(date);
+
+    // Fetch budget for selected month (will use cache if already loaded)
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    await budgetStore.fetchBudget(month, year);
+  };
+
+  const handleEditExpense = (expense: any) => {
+    setSelectedExpense(expense);
+    setOpenEditExpense(true);
+  };
+
+  const handleExpenseClick = (expense: Expense) => {
+    setSelectedExpenseForDetails(expense);
+    setOpenExpenseDetails(true);
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+  };
+
+  const filteredExpenses = expensesStore.filteredExpenses
+    .filter((expense) => {
+      // Search query - searches across description, category, and type (recurring/one-time)
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const description = expense.description.toLowerCase();
+        const category = expense.category.toLowerCase();
+        const type = expense.is_recurring ? 'recurring' : 'one-time';
+
+        return description.includes(query) || category.includes(query) || type.includes(query);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Sorting logic
+      switch (filters.sortBy) {
+        case 'date-desc':
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'date-asc':
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case 'amount-desc':
+          return b.amount - a.amount;
+        case 'amount-asc':
+          return a.amount - b.amount;
+        case 'description-asc':
+          return a.description.localeCompare(b.description);
+        case 'description-desc':
+          return b.description.localeCompare(a.description);
+        default:
+          return 0;
+      }
+    });
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // Clear all stores on logout
     userStore.clearUser();
+    expensesStore.clear();
+    budgetStore.clear();
     router.push('/login');
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
   };
 
   if (loading) {
@@ -100,144 +154,175 @@ const DashboardPage = observer(() => {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{ bgcolor: 'white', borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Toolbar>
-          <Typography
-            variant="h5"
-            component="div"
-            sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}
-          >
-            BoLui
-          </Typography>
-          <IconButton onClick={handleMenuOpen} size="large">
-            <Avatar sx={{ bgcolor: 'primary.main' }}>
-              <AccountCircle />
-            </Avatar>
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-            <MenuItem disabled>
-              <Typography variant="body2" color="text.secondary">
-                {userStore.userEmail}
-              </Typography>
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <Logout sx={{ mr: 1 }} fontSize="small" />
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <AppNavigation />
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Dashboard
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
-            gap: 3,
-            mb: 4,
-          }}
-        >
-          <Card
-            sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-            }}
-          >
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Receipt sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Expenses</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                ${expensesStore.totalExpenses.toFixed(2)}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
-                {expensesStore.expenses.length} transactions
-              </Typography>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingUp sx={{ mr: 1, color: 'success.main' }} />
-                <Typography variant="h6">This Month</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                $0.00
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Coming soon
-              </Typography>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingDown sx={{ mr: 1, color: 'error.main' }} />
-                <Typography variant="h6">Categories</Typography>
-              </Box>
-              <Typography variant="h3" fontWeight={700}>
-                {Object.keys(expensesStore.expensesByCategory).length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Active categories
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-
-        <Card>
-          <CardContent>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}
-            >
-              <Typography variant="h5" fontWeight={600}>
-                Recent Expenses
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={() => setOpenAddExpense(true)}
-              >
-                Add Expense
-              </Button>
-            </Box>
-            <ExpensesList />
-          </CardContent>
-        </Card>
-      </Container>
-
-      <Fab
-        color="primary"
-        aria-label="add"
+      <Box
+        component="main"
         sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          display: { xs: 'flex', md: 'none' },
+          flexGrow: 1,
+          bgcolor: 'background.default',
+          mt: 8, // Account for fixed AppBar height
         }}
-        onClick={() => setOpenAddExpense(true)}
       >
-        <Add />
-      </Fab>
+        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, sm: 3 } }}>
+          <Box sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', md: 'flex-start' },
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography
+                  variant="h4"
+                  fontWeight={700}
+                  gutterBottom
+                  sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
+                >
+                  Dashboard
+                </Typography>
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}
+                >
+                  {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                </Typography>
+              </Box>
 
-      <AddExpenseDialog open={openAddExpense} onClose={() => setOpenAddExpense(false)} />
+              {/* Month Selector - Top Right */}
+              <Box sx={{ width: { xs: '100%', md: 300 } }}>
+                <MonthSelector
+                  selectedDate={expensesStore.selectedMonth}
+                  onDateChange={handleMonthChange}
+                />
+              </Box>
+            </Box>
+
+            {!budgetStore.budget && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<MdSettings />}
+                  onClick={() => setOpenIncomeSetup(true)}
+                  fullWidth
+                >
+                  Set Up Budget
+                </Button>
+              </Box>
+            )}
+          </Box>
+
+          {budgetStore.budget && (
+            <Box sx={{ mb: 4 }}>
+              <BudgetOverview
+                onEditIncome={() => setOpenIncomeSetup(true)}
+                onEditCategories={() => setOpenBudgetSetup(true)}
+              />
+            </Box>
+          )}
+
+          <Card>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                }}
+              >
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Expenses
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {format(expensesStore.selectedMonth, 'MMMM yyyy')}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<MdAdd />}
+                  onClick={() => setOpenAddExpense(true)}
+                  size="small"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                >
+                  Add Expense
+                </Button>
+              </Box>
+
+              {/* Search and Filters */}
+              <ExpenseFilters onFilterChange={handleFilterChange} />
+
+              {/* Summary for selected month */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 1.5,
+                  mb: 2,
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  borderRadius: 1.5,
+                }}
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  Total Expenses ({filteredExpenses.length})
+                </Typography>
+                <Typography variant="h6" fontWeight={700}>
+                  ${filteredExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                </Typography>
+              </Box>
+
+              <ExpensesList
+                onEdit={handleEditExpense}
+                expenses={filteredExpenses}
+                onExpenseClick={handleExpenseClick}
+              />
+            </CardContent>
+          </Card>
+        </Container>
+
+        <Fab
+          color="primary"
+          aria-label="add"
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            display: { xs: 'flex', md: 'none' },
+          }}
+          onClick={() => setOpenAddExpense(true)}
+        >
+          <MdAdd size={24} />
+        </Fab>
+
+        <AddExpense open={openAddExpense} onClose={() => setOpenAddExpense(false)} />
+        <EditExpense
+          open={openEditExpense}
+          onClose={() => {
+            setOpenEditExpense(false);
+            setSelectedExpense(null);
+          }}
+          expense={selectedExpense}
+        />
+        <ExpenseDetails
+          open={openExpenseDetails}
+          onClose={() => {
+            setOpenExpenseDetails(false);
+            setSelectedExpenseForDetails(null);
+          }}
+          expense={selectedExpenseForDetails}
+        />
+        <BudgetSetup open={openBudgetSetup} onClose={() => setOpenBudgetSetup(false)} />
+        <IncomeSetup open={openIncomeSetup} onClose={() => setOpenIncomeSetup(false)} />
+      </Box>
     </Box>
   );
 });

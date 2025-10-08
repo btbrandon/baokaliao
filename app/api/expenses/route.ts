@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { expenseService } from '@/services/expense/service';
+
+export const runtime = 'edge';
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,17 +14,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: expenses, error } = await supabase
-    .from('expenses')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('date', { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const expenses = await expenseService.fetchExpenses(user.id);
+    return NextResponse.json(expenses);
+  } catch (error) {
+    console.error('Error fetching expenses:', error);
+    return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
   }
-
-  return NextResponse.json(expenses);
 }
 
 export async function POST(request: Request) {
@@ -35,29 +34,41 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { amount, description, category, date } = body;
+  const { amount, description, category, date, notes, receiptUrl, isRecurring, recurringDay } =
+    body;
+
+  console.log('POST /api/expenses - Request body:', body);
 
   if (!amount || !description || !category || !date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  const { data: expense, error } = await supabase
-    .from('expenses')
-    .insert([
+  try {
+    const expenseData = {
+      user_id: user.id,
+      amount: parseFloat(amount),
+      description,
+      category,
+      date,
+      notes: notes || null,
+      receipt_url: receiptUrl || null,
+      is_recurring: Boolean(isRecurring),
+      recurring_day: recurringDay ? parseInt(recurringDay) : null,
+    };
+
+    console.log('Creating expense with data:', expenseData);
+    const expense = await expenseService.createExpense(expenseData);
+
+    return NextResponse.json(expense);
+  } catch (error) {
+    console.error('Error creating expense:', error);
+    console.error('Error details:', error instanceof Error ? error.message : error);
+    return NextResponse.json(
       {
-        user_id: user.id,
-        amount,
-        description,
-        category,
-        date,
+        error: 'Failed to create expense',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json(expense);
 }
