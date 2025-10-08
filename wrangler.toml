@@ -1,7 +1,11 @@
 # Cloudflare Pages Configuration
 name = "baokaliao"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
+
+# For direct deployment without adapter
+# pages_build_output_dir = ".next"
 
 # Environment variables (add your actual values in Cloudflare dashboard)
 [vars]
